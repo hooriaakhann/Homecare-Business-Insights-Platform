@@ -1,0 +1,7 @@
+azure-functions>=1.20,<2
+azure-functions-durable>=1.2,<2
+azure-identity>=1.17,<2
+azure-storage-file-datalake>=12.16,<13
+azure-data-tables>=12.5,<13
+pyarrow>=17,<20
+requests>=2.32,<3

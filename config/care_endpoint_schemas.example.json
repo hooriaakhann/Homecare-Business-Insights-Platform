@@ -1,0 +1,23 @@
+{
+  "clients": {
+    "client_id": "string",
+    "status": "string",
+    "service_region": "string",
+    "funding_type": "string",
+    "created_at": "timestamp",
+    "updated_at": "timestamp"
+  },
+  "visits": {
+    "schedule_id": "string",
+    "component_id": "string",
+    "client_id": "string",
+    "employee_id": "string",
+    "service_id": "string",
+    "status": "string",
+    "scheduled_start": "timestamp",
+    "scheduled_end": "timestamp",
+    "actual_start": "timestamp",
+    "actual_end": "timestamp",
+    "last_updated": "timestamp"
+  }
+}

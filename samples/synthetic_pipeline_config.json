@@ -1,25 +1,7 @@
 {
-  "source": "care-management-api",
-  "rate_limit_per_minute": 100,
-  "max_retries": 5,
-  "entities": [
-    {
-      "entity": "clients",
-      "strategy": "incremental",
-      "incremental_field": "updated_at",
-      "dedup_keys": ["client_id"]
-    },
-    {
-      "entity": "visits",
-      "strategy": "incremental",
-      "incremental_field": "last_updated",
-      "dedup_keys": ["schedule_id", "component_id"],
-      "partition_by": "scheduled_start"
-    },
-    {
-      "entity": "service_types",
-      "strategy": "full",
-      "dedup_keys": ["service_type_id"]
-    }
-  ]
+  "environment": "demo",
+  "endpoints": ["clients", "employees", "services", "visits", "care_summaries"],
+  "load_mode": "incremental",
+  "overlap_minutes": {"clients": 30, "visits": 60},
+  "contains_real_client_data": false
 }

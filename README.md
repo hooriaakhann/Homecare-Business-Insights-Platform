@@ -1,17 +1,17 @@
 <div align="center">
 
 # 🏥 Homecare Business Insights Platform
-### Azure Data Engineering & Analytics Case Study
+### Azure Data Engineering & Analytics — Public Portfolio Edition
 
 [![Azure](https://img.shields.io/badge/Microsoft_Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![ADLS](https://img.shields.io/badge/ADLS_Gen2-Data_Lake-0078D4?style=for-the-badge)](#)
 [![Synapse](https://img.shields.io/badge/Azure_Synapse-Analytics-5C2D91?style=for-the-badge)](#)
 [![Power BI](https://img.shields.io/badge/Power_BI-F2C811?style=for-the-badge&logo=powerbi&logoColor=black)](https://powerbi.microsoft.com/)
-[![IaC](https://img.shields.io/badge/Infrastructure-Bicep-3C46A8?style=for-the-badge)](#)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](#)
+[![Bicep](https://img.shields.io/badge/IaC-Bicep-3C46A8?style=for-the-badge)](#)
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white)](#)
 
-**Operational APIs → Azure Functions → ADLS Gen2 → Bronze / Silver / Gold → Synapse SQL → Power BI**
+**Care-management APIs → Azure Durable Functions → ADLS Gen2 → Bronze / Silver / Gold → Synapse Serverless SQL → Power BI**
 
 </div>
 
@@ -19,11 +19,11 @@
 
 ## Overview
 
-This repository is a **sanitized technical case study** of a homecare-services analytics platform I worked on professionally. The original implementation integrated operational data from a care-management SaaS platform into Microsoft Azure and prepared it for reporting and business intelligence.
+This repository is a **public-safe technical reimplementation of a professional homecare analytics platform** I worked on. It preserves the engineering architecture and representative implementation patterns while excluding client-owned source code, real client/employee records, production resource identifiers, credentials, internal endpoints, and private dashboards.
 
-The production repository, client data, credentials, API identifiers, infrastructure names, and proprietary implementation details are intentionally **not published** here. This public version focuses on the architecture, data-engineering decisions, reliability patterns, and analytics design.
+The original project integrated operational care-management data into Azure and transformed it into analytics-ready models for reporting areas such as visits, service delivery, client activity, care hours, staff/service performance, history tracking, and operational KPIs.
 
-The platform was designed to transform operational API data into a governed analytical model for reporting areas such as client activity, service delivery, care hours, visit history, staff availability, service performance, and operational KPIs.
+This portfolio edition is intentionally substantial: it includes working examples of the pipeline layers rather than only an architecture diagram.
 
 ---
 
@@ -31,202 +31,212 @@ The platform was designed to transform operational API data into a governed anal
 
 ```mermaid
 flowchart LR
-    A[Care Management SaaS APIs] -->|REST / JSON| B[Azure Durable Functions]
-    B -->|Immutable batches| C[(ADLS Gen2 Bronze)]
+    A[Care Management APIs] -->|REST / JSON| B[Azure Durable Functions]
+    B --> C[(ADLS Gen2 Bronze)]
     C --> D[Silver Curation]
     D --> E[(ADLS Gen2 Silver)]
     E --> F[Gold Modeling]
     F --> G[(ADLS Gen2 Gold)]
-    G --> H[Azure Synapse Serverless SQL]
-    H --> I[Power BI Semantic Model]
-    I --> J[Business Insights Dashboards]
+    G --> H[Synapse Serverless SQL]
+    H --> I[Power BI]
 
-    K[Watermarks & Config] -. controls .-> B
-    L[Azure Key Vault] -. secrets .-> B
-    M[GitHub Actions] -. deploys .-> B
-    M -. deploys .-> H
-    M -. deploys .-> N[Bicep Infrastructure]
+    J[Watermark Store] -. incremental state .-> B
+    K[Key Vault] -. secrets .-> B
+    L[GitHub Actions] -. validation / delivery .-> B
+    M[Bicep] -. infrastructure .-> B
 ```
-
-### Data flow
 
 ```text
-Operational APIs
-      │
-      ▼
-Durable Function Orchestration
-      │
-      ├── Incremental / full / date-range extraction
-      ├── Retry + rate-limit handling
-      └── Watermark management
-      │
-      ▼
-BRONZE — immutable raw Parquet
-      │
-      ▼
-SILVER — typed, normalized, deduplicated entities
-      │
-      ▼
-GOLD — analytics-ready dimensions, facts and marts
-      │
-      ▼
-Synapse Serverless SQL Views
-      │
-      ▼
-Power BI Reports & KPIs
+Source APIs
+   │
+   ▼
+Bronze ingestion
+   │ immutable batch Parquet
+   ▼
+Silver curation
+   │ normalized + deduplicated entities
+   ▼
+Gold builders
+   │ dimensions + facts + history + marts
+   ▼
+Synapse Serverless SQL
+   │
+   ▼
+Power BI
 ```
 
 ---
 
-## What I worked on
+## Pipeline layers
 
-This project involved both **data engineering and analytics engineering** responsibilities:
+### 🥉 Bronze — immutable ingestion
 
-- Building Python ingestion workflows for REST APIs
-- Supporting incremental, full-refresh, date-range, and entity-loop ingestion strategies
-- Maintaining watermarks so recurring loads request only required changes
-- Preserving immutable raw data in a Bronze layer for replay and auditability
-- Curating typed and deduplicated Silver datasets
-- Building Gold analytical models and SQL marts
-- Handling nested API structures and child arrays
-- Designing history logic for time-varying client and visit data
-- Exposing Parquet-backed datasets through Synapse Serverless SQL
-- Building Power BI datasets and operational/business insight views
-- Defining Azure infrastructure with Bicep
-- Automating deployment workflows with GitHub Actions
-- Keeping credentials outside source control and using managed-secret patterns
+[`src/bronze/ingest.py`](src/bronze/ingest.py)
+
+The Bronze layer demonstrates:
+
+- REST API pagination
+- incremental loading using persisted watermarks
+- overlap windows for late-arriving updates
+- batch IDs and date-based paths
+- Parquet serialization
+- immutable raw storage
+- extraction of nested child arrays into separate datasets
+
+Example layout:
+
+```text
+bronze/
+└── source/
+    ├── clients/date=YYYY-MM-DD/batch=<id>/clients.parquet
+    └── visits/date=YYYY-MM-DD/batch=<id>/visits.parquet
+```
+
+### 🥈 Silver — typed and deduplicated
+
+[`src/silver/curate.py`](src/silver/curate.py)
+
+The Silver layer merges new Bronze batches with existing curated data and applies:
+
+- field normalization
+- business-key deduplication
+- latest-record selection
+- endpoint-specific ordering fields
+- stable Parquet outputs for downstream modeling
+
+```text
+silver/
+├── clients/clients.parquet
+├── employees/employees.parquet
+├── services/services.parquet
+└── visits/visits.parquet
+```
+
+### 🥇 Gold — analytics-ready tables
+
+[`src/gold/build.py`](src/gold/build.py)
+
+Representative Gold contracts include:
+
+```text
+dim_client
+dim_client_history
+dim_employee
+dim_service
+fact_visit
+fact_visit_component
+fact_visit_component_version
+fact_care_summary
+fact_client_action
+fact_client_note
+fact_service_request
+xref_client_funding_history
+xref_visit_schedule_component
+xref_careplan_section
+```
+
+Visit facts are partitioned by year/month to demonstrate a scalable analytical layout.
 
 ---
 
-## Lakehouse-style data layers
+## History handling
 
-| Layer | Purpose | Key characteristics |
-|---|---|---|
-| **Bronze** | Preserve source data | Immutable batches, partitioned storage, replayable raw history |
-| **Silver** | Clean and conform | Typed fields, normalization, deduplication, nested-data handling |
-| **Gold** | Serve analytics | Facts, dimensions, historical models, KPI-ready datasets |
-| **SQL serving** | Query layer | Synapse views over Parquet for BI consumption |
-| **Power BI** | Decision layer | KPIs, trends, service/client insights and management reporting |
+Professional reporting often needs more than the latest state.
+
+[`src/history/client_history.py`](src/history/client_history.py) demonstrates an **SCD Type 2** pattern for client attributes, while [`src/history/visit_history.py`](src/history/visit_history.py) separates visit-version history from the current visit state.
+
+This allows questions such as:
+
+- What was a client's service/funding state at a past date?
+- How did a visit change after scheduling?
+- What is the latest version of each schedule/component?
+- Which attributes changed over time?
 
 ---
 
-## Incremental ingestion strategy
+## Incremental loading & watermarks
 
-A major engineering requirement was avoiding unnecessary full reloads while still protecting against late-arriving updates.
-
-The pipeline uses a **watermark pattern**:
+[`src/shared/watermark.py`](src/shared/watermark.py)
 
 ```text
 Read last successful watermark
-        │
-        ▼
-Subtract a small overlap window
-        │
-        ▼
-Request source records changed since that time
-        │
-        ▼
-Write immutable Bronze batch
-        │
-        ▼
-Deduplicate downstream using business keys
-        │
-        ▼
-Advance watermark only after successful processing
+          │
+          ▼
+Subtract overlap window
+          │
+          ▼
+Request changed records
+          │
+          ▼
+Write Bronze batch
+          │
+          ▼
+Curate Silver / build Gold
+          │
+          ▼
+Advance watermark only after success
 ```
 
-The overlap window reduces the risk of missing records updated close to the boundary between two pipeline runs.
-
-A simplified public example is available in [`src/watermark_example.py`](src/watermark_example.py).
+The overlap window is deliberate: it reduces the risk of missing changes that occur close to the boundary between two scheduled runs.
 
 ---
 
-## Data modeling
+## API reliability
 
-The analytical layer follows warehouse-style patterns:
+[`src/shared/api_client.py`](src/shared/api_client.py) demonstrates:
 
-- **Dimensions** for relatively stable descriptive entities
-- **Facts** for visits, activities, service events, and transactional records
-- **Cross-reference tables** for many-to-many structures returned by nested APIs
-- **Historical tables** for entities where changes over time must be preserved
-- **Marts** for reporting-specific calculations such as service hours and operational performance
+- bearer-token authentication from environment variables
+- company/context headers
+- page-based iteration
+- request timeouts
+- bounded retry logic
+- exponential backoff
+- HTTP 429 / `Retry-After` handling
 
-A simplified example is shown in [`sql/service_hours_example.sql`](sql/service_hours_example.sql).
-
----
-
-## Reliability patterns
-
-### Idempotency
-A rerun should not create duplicate analytical records. Business keys and deduplication logic are applied during curation.
-
-### Raw-data immutability
-Bronze data is never overwritten, making debugging, audit, replay, and schema investigation easier.
-
-### Retry and throttling
-API calls require bounded retries, timeout handling, and respect for source rate limits.
-
-### Watermark safety
-Watermarks advance only after successful processing, with overlap windows protecting against boundary misses.
-
-### Schema evolution
-External APIs can add or change fields. Raw ingestion is separated from typed curation so downstream models can evolve safely.
-
-### Observability
-Application logging and cloud monitoring are part of the architecture so failed endpoints or abnormal loads can be investigated.
+No real token, company ID, vendor hostname, or production endpoint is stored in the repository.
 
 ---
 
-## Infrastructure & CI/CD
+## Synapse serving layer
 
-```text
-Bicep
- ├── Storage / Data Lake
- ├── Function App
- ├── Key Vault
- ├── Monitoring
- └── Synapse resources
+[`sql/create_bi_views.sql`](sql/create_bi_views.sql) demonstrates Synapse Serverless SQL views over Gold Parquet.
 
-GitHub Actions
- ├── Infrastructure deployment
- ├── Function deployment
- ├── SQL/view deployment
- └── Controlled first-load / backfill workflows
-```
+A BI-facing visit view uses `ROW_NUMBER()` to expose one latest schedule-level row while still retaining the component-grain Gold data separately.
 
-This separates infrastructure, application code, and data-model deployment concerns while keeping environment changes reproducible.
+[`sql/marts/care_hours.sql`](sql/marts/care_hours.sql) builds a simplified reporting mart for:
+
+- scheduled hours
+- delivered hours
+- delivery variance
+- service/client/employee linkage
 
 ---
 
-## Analytics layer
+## Azure infrastructure as code
 
-The platform supported operational and management reporting around:
+The [`infra/`](infra/) folder contains parameterized Bicep modules for:
 
-- Service hours and delivery trends
-- Client and service activity
-- Visit status and historical changes
-- Operational workload patterns
-- Staff/service availability
-- KPI monitoring
-- Revenue and service-performance relationships where relevant to the reporting model
+- ADLS Gen2 storage
+- Azure Function App
+- Azure Key Vault
+- Application Insights / Log Analytics
+- Azure Synapse workspace
 
-No client-identifying dashboard data is included in this public repository.
+Resource names are generated from a generic project prefix and `uniqueString()` rather than exposing production resource names.
+
+Secrets are secure parameters and are not committed.
 
 ---
 
-## Tech stack
+## CI validation
 
-| Area | Technologies |
-|---|---|
-| **Language** | Python, SQL |
-| **Orchestration** | Azure Durable Functions |
-| **Storage** | Azure Data Lake Storage Gen2, Parquet |
-| **Transformation** | Python, layered Bronze/Silver/Gold design |
-| **Query / Serving** | Azure Synapse Serverless SQL |
-| **Analytics** | Power BI, DAX, Power Query |
-| **Infrastructure as Code** | Bicep |
-| **CI/CD** | GitHub Actions |
-| **Secrets / Monitoring** | Azure Key Vault, Application Insights |
+[`.github/workflows/validate.yml`](.github/workflows/validate.yml) runs:
+
+- Python syntax compilation
+- JSON validation
+- unit tests
+
+This keeps the public implementation reproducible without embedding any production deployment credentials.
 
 ---
 
@@ -234,35 +244,79 @@ No client-identifying dashboard data is included in this public repository.
 
 ```text
 Homecare-Business-Insights-Platform/
-├── .github/workflows/
-│   └── validate.yml
+├── .github/
+│   └── workflows/
+│       └── validate.yml
+├── config/
+│   ├── care_endpoint_schemas.example.json
+│   └── config.example.json
 ├── docs/
 │   ├── architecture.md
 │   └── security-and-privacy.md
+├── infra/
+│   ├── main.bicep
+│   └── modules/
+│       ├── appinsights.bicep
+│       ├── functionapp.bicep
+│       ├── keyvault.bicep
+│       ├── storage.bicep
+│       └── synapse.bicep
 ├── samples/
 │   └── synthetic_pipeline_config.json
-├── src/
-│   └── watermark_example.py
 ├── sql/
-│   └── service_hours_example.sql
+│   ├── create_database.sql
+│   ├── create_bi_views.sql
+│   └── marts/
+│       └── care_hours.sql
+├── src/
+│   ├── bronze/
+│   │   └── ingest.py
+│   ├── silver/
+│   │   └── curate.py
+│   ├── gold/
+│   │   └── build.py
+│   ├── history/
+│   │   ├── client_history.py
+│   │   └── visit_history.py
+│   ├── shared/
+│   │   ├── adls.py
+│   │   ├── api_client.py
+│   │   ├── config_loader.py
+│   │   ├── logging_config.py
+│   │   ├── utils.py
+│   │   └── watermark.py
+│   ├── function_app.py
+│   ├── host.json
+│   └── requirements.txt
+├── tests/
+│   └── test_utils.py
 ├── .gitignore
-├── LICENSE
 └── README.md
 ```
 
 ---
 
-## Confidentiality note
+## Public vs. production version
 
-This is **not a mirror of the production/client repository**. The public case study deliberately excludes real client or employee records, client/company names, source-system account identifiers, API credentials, Azure subscription/resource identifiers, production endpoints, exact production schemas, private Power BI datasets, and proprietary application source code.
+| Public portfolio edition | Excluded from public repository |
+|---|---|
+| Bronze/Silver/Gold architecture | Production source repository |
+| Representative Python pipeline code | Client-owned proprietary implementation |
+| Generic API ingestion patterns | Real vendor/account credentials |
+| Watermark and retry logic | Real tenant/subscription/object IDs |
+| Representative Gold contracts | Exact private production schemas |
+| Synapse SQL serving examples | Client/employee records |
+| Bicep infrastructure patterns | Production resource names |
+| CI validation | Private deployment secrets |
+| Synthetic configuration | Private Power BI assets |
 
-The examples in this repository are synthetic and are included only to explain the engineering patterns used.
+This boundary is intentional: the repository demonstrates engineering depth without publishing confidential material.
 
 ---
 
 ## Skills demonstrated
 
-`Azure Data Engineering` · `ETL/ELT` · `Incremental Loading` · `Data Lake Architecture` · `Bronze/Silver/Gold` · `Parquet` · `Synapse SQL` · `Python` · `Power BI` · `Bicep` · `GitHub Actions` · `Analytics Engineering` · `Data Governance`
+`Azure Data Engineering` · `Python` · `ETL/ELT` · `ADLS Gen2` · `Parquet` · `Bronze/Silver/Gold` · `Incremental Loading` · `Watermarks` · `SCD2` · `Synapse Serverless SQL` · `Power BI` · `Bicep` · `GitHub Actions` · `API Integration` · `Data Modeling` · `Analytics Engineering`
 
 ---
 

@@ -1,4 +1,4 @@
-name: Validate Portfolio Case Study
+name: Validate Public Example
 
 on:
   push:
@@ -10,16 +10,27 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
-      - name: Compile Python examples
-        run: python -m compileall src
+      - name: Validate Python syntax
+        run: python -m compileall src tests
 
-      - name: Validate synthetic JSON config
-        run: python -m json.tool samples/synthetic_pipeline_config.json > /dev/null
+      - name: Validate JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in list(Path("config").glob("*.json")) + list(Path("samples").glob("*.json")):
+              json.loads(path.read_text())
+              print("valid", path)
+          PY
+
+      - name: Install test dependencies
+        run: pip install pytest
+
+      - name: Run unit tests
+        run: PYTHONPATH=src pytest -q

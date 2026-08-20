@@ -1,16 +1,14 @@
-# Security & Privacy
+# Security and Privacy
 
-Homecare and healthcare-service data can contain highly sensitive personal information. This public repository therefore contains **no production data and no client-identifying information**.
+This public repository intentionally does **not** contain production client or employee records, source API credentials, tenant/subscription identifiers, real Azure resource names, production endpoints, internal emails, private dashboards, or the original client-owned source repository.
 
-## Public-repository rules
+The configuration and code use generic names and synthetic examples. Secrets are expected to come from environment variables or a secret manager such as Azure Key Vault.
 
-- Do not commit secrets or connection strings.
-- Do not publish source-system company identifiers.
-- Do not publish real client, employee, visit, health, address, phone, or email data.
-- Do not include production Azure resource names or subscription identifiers.
-- Use synthetic examples for schemas and configuration.
-- Keep real credentials in managed secret stores such as Azure Key Vault or GitHub encrypted secrets.
-
-## Production pattern
-
-A production implementation should combine least-privilege identities, managed secrets, encryption at rest and in transit, logging controls, auditability, and data-retention rules appropriate to the organization and jurisdiction.
+For a real healthcare or homecare workload:
+- use least-privilege RBAC,
+- disable public blob access,
+- keep secrets out of source control,
+- protect logs from accidental PII,
+- apply data-retention requirements,
+- separate dev/test/prod resources,
+- document lawful access and auditing requirements.

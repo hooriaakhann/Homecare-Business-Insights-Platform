@@ -1,0 +1,38 @@
+{
+  "base_url": "https://api.example-care-platform.com/v1",
+  "timeout_seconds": 45,
+  "page_size": 500,
+  "storage": {
+    "bronze": "bronze",
+    "silver": "silver",
+    "gold": "gold"
+  },
+  "endpoints": {
+    "clients": {
+      "business_keys": ["client_id"],
+      "order_field": "updated_at",
+      "overlap_minutes": 30,
+      "gold_fields": ["client_id", "status", "service_region", "funding_type", "created_at", "updated_at"]
+    },
+    "employees": {
+      "business_keys": ["employee_id"],
+      "order_field": "updated_at",
+      "gold_fields": ["employee_id", "employment_status", "team", "created_at", "updated_at"]
+    },
+    "services": {
+      "business_keys": ["service_id"],
+      "order_field": "updated_at"
+    },
+    "visits": {
+      "business_keys": ["schedule_id", "component_id"],
+      "order_field": "last_updated",
+      "overlap_minutes": 60,
+      "child_arrays": [{"field": "components", "name": "visit_components", "parent_key": "schedule_id"}],
+      "gold_fields": ["schedule_id", "component_id", "client_id", "employee_id", "service_id", "status", "scheduled_start", "scheduled_end", "actual_start", "actual_end", "last_updated"]
+    },
+    "care_summaries": {
+      "business_keys": ["client_id", "summary_id"],
+      "order_field": "updated_at"
+    }
+  }
+}

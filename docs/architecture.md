@@ -1,38 +1,28 @@
 # Architecture Notes
 
-## Design goal
+This repository is a public-safe reimplementation of a professional homecare analytics architecture.
 
-The platform converts operational homecare-service API data into analytics-ready datasets while keeping source ingestion, curation, modeling, and reporting concerns separated.
+## Layers
 
-## Orchestration
+- **Bronze:** immutable, batch-partitioned source snapshots in Parquet.
+- **Silver:** normalized, typed and deduplicated entities.
+- **Gold:** dimensions, facts, cross-reference tables and reporting marts.
+- **Serving:** Synapse Serverless SQL views over Gold Parquet.
+- **BI:** Power BI semantic models and dashboards.
 
-Durable orchestration coordinates endpoints sequentially or in controlled groups. Each logical entity can choose an ingestion strategy suited to the source behavior:
+## Incremental loading
 
-- **incremental** — request records changed after a stored watermark
-- **full** — reload small reference datasets
-- **date-range** — extract activity constrained by a time window
-- **entity loop** — request child resources for each parent entity
+Each endpoint has a persisted watermark. The next run subtracts a configurable overlap window before querying changes. This protects against late updates and boundary races. The Silver layer then deduplicates on endpoint-specific business keys.
 
-## Storage zones
+## History
 
-### Bronze
-Immutable raw batches preserve what was returned by the source. Each batch is associated with an ingestion time and partition path.
+Client-style attributes use an SCD2 pattern when business reporting requires “as-of” history. Visit data can retain both latest state and version history.
 
-### Silver
-Silver datasets normalize source structures, enforce types, flatten selected nested objects, expand child arrays, and deduplicate records using stable business keys.
+## Operational design
 
-### Gold
-Gold datasets organize information into facts, dimensions, historical tables, and reporting marts.
-
-## Serving
-
-Synapse Serverless SQL exposes SQL views over Parquet data so BI tooling can query the analytical layer without requiring a dedicated SQL warehouse for every dataset.
-
-## Operational safety
-
-- retries are bounded
-- API rate limits are respected
-- watermarks advance only after success
-- raw data remains replayable
-- secrets remain outside source control
-- deployment paths are automated and reproducible
+The production-style architecture also separates:
+- source acquisition from curation,
+- source schema from analytical schema,
+- infrastructure from application deployment,
+- secrets from code,
+- raw lineage from BI-facing views.
