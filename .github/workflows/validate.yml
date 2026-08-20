@@ -1,0 +1,25 @@
+name: Validate Portfolio Case Study
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python examples
+        run: python -m compileall src
+
+      - name: Validate synthetic JSON config
+        run: python -m json.tool samples/synthetic_pipeline_config.json > /dev/null
