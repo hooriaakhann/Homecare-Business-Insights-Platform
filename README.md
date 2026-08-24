@@ -3,6 +3,8 @@
 # 🏥 Homecare Business Insights Platform
 ### Azure Data Engineering & Analytics — Public Portfolio Edition
 
+<img src="assets/harwell-business-insights-cover.svg" alt="Harwell Business Insights dashboard cover" width="100%" />
+
 [![Azure](https://img.shields.io/badge/Microsoft_Azure-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![ADLS](https://img.shields.io/badge/ADLS_Gen2-Data_Lake-0078D4?style=for-the-badge)](#)
